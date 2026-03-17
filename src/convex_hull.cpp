@@ -35,6 +35,7 @@ std::vector<Point2D> GrahamScan(std::span<Point2D> points) {
         hull.Push(new_p);
     }
 
-    return std::vector{hull.Extract()};}
+    return std::vector{hull.Extract()};
+}
 
 }  // namespace geometry::convex_hull
