@@ -17,16 +17,16 @@ struct DistanceVisitor {
     explicit DistanceVisitor(const Point2D &p) : point(p) {}
 
     double operator()(const Line &line) const {
-        Point2D line_vec = line.end - line.start;
-        Point2D point_vec = point - line.start;
+        Point2D line_vec = line.End() - line.Start();
+        Point2D point_vec = point - line.Start();
 
         double line_length_sq = line_vec.Dot(line_vec);
         if (line_length_sq == 0) {
-            return point.DistanceTo(line.start);
+            return point.DistanceTo(line.Start());
         }
 
         double t = std::clamp(point_vec.Dot(line_vec) / line_length_sq, 0.0, 1.0);
-        Point2D projection = line.start + line_vec * t;
+        Point2D projection = line.Start() + line_vec * t;
 
         return point.DistanceTo(projection);
     }
@@ -87,16 +87,16 @@ struct PointToShapeDistanceVisitor {
     explicit PointToShapeDistanceVisitor(const Point2D &p) : point(p) {}
 
     double operator()(const Line &line) const {
-        Point2D line_vec = line.end - line.start;
-        Point2D point_vec = point - line.start;
+        Point2D line_vec = line.End() - line.Start();
+        Point2D point_vec = point - line.Start();
 
         double line_length_sq = line_vec.Dot(line_vec);
         if (line_length_sq == 0) {
-            return point.DistanceTo(line.start);
+            return point.DistanceTo(line.Start());
         }
 
         double t = std::clamp(point_vec.Dot(line_vec) / line_length_sq, 0.0, 1.0);
-        Point2D projection = line.start + line_vec * t;
+        Point2D projection = line.Start() + line_vec * t;
 
         return point.DistanceTo(projection);
     }
@@ -157,8 +157,8 @@ struct PointInShapeVisitor {
     explicit PointInShapeVisitor(const Point2D &p) : point(p) {}
 
     bool operator()(const Line &line) const {
-        Point2D line_vec = line.end - line.start;
-        Point2D point_vec = point - line.start;
+        Point2D line_vec = line.End() - line.Start();
+        Point2D point_vec = point - line.Start();
 
         double cross = point_vec.Cross(line_vec);
         if (std::abs(cross) > 1e-10) {
@@ -172,9 +172,9 @@ struct PointInShapeVisitor {
     }
 
     bool operator()(const Triangle &triangle) const {
-        Point2D a = triangle.a;
-        Point2D b = triangle.b;
-        Point2D c = triangle.c;
+        Point2D a = triangle.A();
+        Point2D b = triangle.B();
+        Point2D c = triangle.C();
 
         double sign1 = (point - a).Cross(b - a);
         double sign2 = (point - b).Cross(c - b);
@@ -187,8 +187,8 @@ struct PointInShapeVisitor {
     }
 
     bool operator()(const Rectangle &rect) const {
-        return point.x >= rect.bottom_left.x && point.x <= rect.bottom_left.x + rect.width &&
-               point.y >= rect.bottom_left.y && point.y <= rect.bottom_left.y + rect.height;
+        return point.X() >= rect.bottom_left.X() && point.X() <= rect.bottom_left.X() + rect.width &&
+               point.Y() >= rect.bottom_left.Y() && point.Y() <= rect.bottom_left.Y() + rect.height;
     }
 
     bool operator()(const RegularPolygon &polygon) const {
@@ -207,7 +207,8 @@ private:
             Point2D v1 = vertices[i];
             Point2D v2 = vertices[(i + 1) % n];
 
-            if (((v1.y > p.y) != (v2.y > p.y)) && (p.x < (v2.x - v1.x) * (p.y - v1.y) / (v2.y - v1.y) + v1.x)) {
+            if (((v1.Y() > p.Y()) != (v2.Y() > p.Y())) &&
+                (p.X() < (v2.X() - v1.X()) * (p.Y() - v1.Y()) / (v2.Y() - v1.Y()) + v1.X())) {
                 intersections++;
             }
         }
@@ -223,8 +224,9 @@ struct ShapeToShapeDistanceVisitor {
     }
 
     std::optional<double> operator()(const Line &l1, const Line &l2) const {
-        std::vector<double> distances = {queries::DistanceVisitor{l1.start}(l2), queries::DistanceVisitor{l1.end}(l2),
-                                         queries::DistanceVisitor{l2.start}(l1), queries::DistanceVisitor{l2.end}(l1)};
+        std::vector<double> distances = {
+            queries::DistanceVisitor{l1.Start()}(l2), queries::DistanceVisitor{l1.End()}(l2),
+            queries::DistanceVisitor{l2.Start()}(l1), queries::DistanceVisitor{l2.End()}(l1)};
         return *std::ranges::min_element(distances);
     }
 
@@ -235,10 +237,9 @@ struct ShapeToShapeDistanceVisitor {
     }
 };
 
-
 /*
-* Функции-помощники
-*/
+ * Функции-помощники
+ */
 inline double DistanceToPoint(const Shape &shape, const Point2D &point) {
 
     /* ваш код с PointToShapeDistanceVisitor здесь*/
@@ -258,7 +259,7 @@ inline double GetHeight(const Shape &shape) {
 }
 
 inline bool BoundingBoxesOverlap(const Shape &shape1, const Shape &shape2) {
-   BoundingBox bb1 = GetBoundBox(shape1);
+    BoundingBox bb1 = GetBoundBox(shape1);
     BoundingBox bb2 = GetBoundBox(shape2);
     return bb1.Overlaps(bb2);
 }
