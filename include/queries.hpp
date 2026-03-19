@@ -68,8 +68,8 @@ struct DistanceVisitor {
     }
 
     double operator()(const Circle &circle) const {
-        double center_distance = point.DistanceTo(circle.center_p);
-        return std::max(0.0, center_distance - circle.radius);
+        double center_distance = point.DistanceTo(circle.Center());
+        return std::max(0.0, center_distance - circle.Radius());
     }
 
     double operator()(const Polygon &polygon) const {
@@ -138,8 +138,8 @@ struct PointToShapeDistanceVisitor {
     }
 
     double operator()(const Circle &circle) const {
-        double center_distance = point.DistanceTo(circle.center_p);
-        return std::max(0.0, center_distance - circle.radius);
+        double center_distance = point.DistanceTo(circle.Center());
+        return std::max(0.0, center_distance - circle.Radius());
     }
 
     double operator()(const Polygon &polygon) const {
@@ -187,8 +187,8 @@ struct PointInShapeVisitor {
     }
 
     bool operator()(const Rectangle &rect) const {
-        return point.X() >= rect.bottom_left.X() && point.X() <= rect.bottom_left.X() + rect.width &&
-               point.Y() >= rect.bottom_left.Y() && point.Y() <= rect.bottom_left.Y() + rect.height;
+        return point.X() >= rect.BottomLeft().X() && point.X() <= rect.BottomLeft().X() + rect.Width() &&
+               point.Y() >= rect.BottomLeft().Y() && point.Y() <= rect.BottomLeft().Y() + rect.Height();
     }
 
     bool operator()(const RegularPolygon &polygon) const {
@@ -196,7 +196,7 @@ struct PointInShapeVisitor {
         return point_in_polygon_ray_casting(point, vertices);
     }
 
-    bool operator()(const Circle &circle) const { return point.DistanceTo(circle.center_p) <= circle.radius; }
+    bool operator()(const Circle &circle) const { return point.DistanceTo(circle.Center()) <= circle.Radius(); }
 
 private:
     bool point_in_polygon_ray_casting(const Point2D &p, const std::vector<Point2D> &vertices) const {
@@ -219,8 +219,8 @@ private:
 
 struct ShapeToShapeDistanceVisitor {
     std::optional<double> operator()(const Circle &c1, const Circle &c2) const {
-        double centerDistance = c1.center_p.DistanceTo(c2.center_p);
-        return std::max(0.0, centerDistance - c1.radius - c2.radius);
+        double centerDistance = c1.Center().DistanceTo(c2.Center());
+        return std::max(0.0, centerDistance - c1.Radius() - c2.Radius());
     }
 
     std::optional<double> operator()(const Line &l1, const Line &l2) const {
