@@ -87,6 +87,8 @@ public:
     [[nodiscard]] constexpr Point2D Normalize() {
         return *this / Length();  // если Length() вернет 0.0, то оператор деления защитит
     }
+    // Метод, сравнивающий координаты точки с (0.0) с учетом погрешности
+    [[nodiscard]] constexpr bool IsZero() const noexcept { return (std::abs(x_) < EPS) && (std::abs(y_) < EPS); }
 
 private:
     double x_;  // координаты точки
@@ -176,8 +178,11 @@ public:
     // Метод, возвращающий длину отрезка
     [[nodiscard]] constexpr double Length() const noexcept { return start_.DistanceTo(end_); }
 
+    // Метод, возвращающий направление отрезка (не единичный вектор)
+    [[nodiscard]] constexpr Point2D Dir() const noexcept { return (end_ - start_); }
+
     // Метод, возвращающий направление отрезка (единичный вектор)
-    [[nodiscard]] constexpr Point2D Direction() const noexcept { return (end_ - start_).Normalize(); }
+    [[nodiscard]] constexpr Point2D DirNorm() const noexcept { return Dir().Normalize(); }
 
     // Метод, возвращающий ограничивающий бокс отрезка
     [[nodiscard]] constexpr BoundingBox BoundBox() const noexcept {
