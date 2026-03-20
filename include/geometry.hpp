@@ -138,9 +138,13 @@ public:
     constexpr BoundingBox(double min_x, double min_y, double max_x, double max_y) noexcept
         : bottom_left_(min_x, min_y), top_right_(max_x, max_y) {}
 
-    // Параметрический конструктор, принимающий левую нижнюю и правую верхнюю вершины ограничивающего бокса
+    // Параметрический конструктор, принимающий диагональные вершины ограничивающего бокса
     constexpr BoundingBox(const Point2D &bottom_left, const Point2D &top_right) noexcept
         : bottom_left_(bottom_left.X(), bottom_left.Y()), top_right_(top_right.X(), top_right.Y()) {}
+
+    // Методы доступа к диагональным вершинам ограничивающего бокса
+    [[nodiscard]] constexpr Point2D BottomLeft() const noexcept { return bottom_left_; }
+    [[nodiscard]] constexpr Point2D TopRight() const noexcept { return top_right_; }
 
     // Метод, проверяющий пересечение двух ограничивающих боксов
     [[nodiscard]] constexpr bool Overlaps(const BoundingBox &other) const noexcept {
@@ -190,7 +194,7 @@ public:
                 {std::max(start_.X(), end_.X()), std::max(start_.Y(), end_.Y())}};  // правая верхняя вершина бокса
     }
 
-    // Метод, возвращающий наибольшую Y координату отрезка (для сортировки по высоте)
+    // Метод, возвращающий наибольшую Y координату отрезка
     [[nodiscard]] constexpr double MaxY() const noexcept { return std::max(start_.Y(), end_.Y()); }
 
     // Метод, возвращающий центр отрезка
@@ -236,7 +240,7 @@ public:
     // Метод, возвращающий вершины треугольника
     [[nodiscard]] constexpr std::array<Point2D, 3> Vertices() const noexcept { return {a_, b_, c_}; }
 
-    // Метод, возвращающий наибольшую Y координату треугольника (для сортировки по высоте)
+    // Метод, возвращающий наибольшую Y координату треугольника
     [[nodiscard]] constexpr double MaxY() const noexcept { return std::max({a_.Y(), b_.Y(), c_.Y()}); }
 
     // Метод, возвращающий центр тяжести треугольника (центроид)
@@ -287,7 +291,7 @@ public:
         };
     }
 
-    // Метод, возвращающий наибольшую Y координату треугольника (для сортировки по высоте)
+    // Метод, возвращающий наибольшую Y координату прямоугольника
     [[nodiscard]] constexpr double MaxY() const noexcept { return bottom_left_.Y() + height_; }
 
     // Метод, возвращающий центр прямоугольника
@@ -417,7 +421,7 @@ private:
     double radius_;   // радиус окружности (> 0)
 };
 
-// Класс произвольного многоугольника (заданного списком вершин)
+// Класс произвольного многоугольника (заданного массивом вершин)
 class Polygon {
 public:
     // Конструктор по умолчанию отсутствует (предотвращение создания невалидных объектов)
@@ -426,11 +430,14 @@ public:
     constexpr Polygon(std::vector<Point2D> points) noexcept : points_(std::move(points)) {
         CalculateBoundBox();  // вычисляем ограничивающий бокс при создании
     }
-    // Метод, возвращающий ограничивающий бокс многоугольника (кэшированное значение)
+    // Метод, возвращающий ограничивающий бокс многоугольника (кешированное значение)
     [[nodiscard]] constexpr BoundingBox BoundBox() const noexcept { return bounding_box_; }
 
-    // Метод, возвращающий высоту многоугольника
-    [[nodiscard]] constexpr double Height() const noexcept { return bounding_box_.Height(); }
+    // // Метод, возвращающий высоту многоугольника
+    // [[nodiscard]] constexpr double Height() const noexcept { return bounding_box_.Height(); }
+
+    // Метод, возвращающий наибольшую Y координату (верхнюю границу) многоугольника
+    [[nodiscard]] constexpr double MaxY() const noexcept { return bounding_box_.TopRight().Y(); }
 
     // Метод, возвращающий центр многоугольника (центр ограничивающего бокса)
     [[nodiscard]] constexpr Point2D Center() const noexcept { return bounding_box_.Center(); }
@@ -470,7 +477,7 @@ private:
     }
 
     std::vector<Point2D> points_;  // вершины многоугольника
-    BoundingBox bounding_box_;     // кэшированный ограничивающий бокс
+    BoundingBox bounding_box_;     // кешированный ограничивающий бокс
 };
 
 // Тип-сумма для хранения любой фигуры (полиморфизм без виртуальных функций).
