@@ -78,63 +78,53 @@ std::optional<int> RequireIntegerAtLeast(double d, int min_value) {
     return std::nullopt;
 }
 
-// Конструкторы фигур
+// === Конструкторы фигур (с использованием монадического стиля) ===
 
-/**
-    @brief Создаёт круг из параметров
-    @note Пример того как могла бы выглядеть эта функция:
-        if (v.size() != 3) return std::nullopt;
-        if (v[2] <= 0) return std::nullopt; // радиус должен быть > 0
-        return Circle{{v[0], v[1]}, v[2]};
-*/
+// Создает круг из вектора параметров
 std::optional<Shape> MakeCircle(const std::vector<double> &v) {
-    // Ваш код здесь
+    // 1. Проверяем, что есть 3 параметра: x, y, radius
+    // 2. Проверяем, что радиус > 0
+    // 3. Создаем окружность
+    return RequireSize(v, 3).and_then([&v](auto) { return RequirePositive(v[2]); }).transform([&v](auto) -> Shape {
+        return Circle{{v[0], v[1]}, v[2]};
+    });
 }
 
-/**
-    @brief Создаёт линию из параметров
-    @note Пример того как могла бы выглядеть эта функция:
-        if (v.size() != 4) return std::nullopt;
-        return Line{{v[0], v[1]}, {v[2], v[3]}};
-*/
+// Создает линию из вектора параметров
 std::optional<Shape> MakeLine(const std::vector<double> &v) {
-    // Ваш код здесь
+    // 1. Проверяем, что есть 4 параметра: x1, y1, x2, y2
+    // 2. Создаем линию (может быть вырожденной)
+    return RequireSize(v, 4).transform([&v](auto) -> Shape { return Line{{v[0], v[1]}, {v[2], v[3]}}; });
 }
 
-/**
-    @brief Создаёт треугольник из параметров
-    @note Пример того как могла бы выглядеть эта функция:
-        if (v.size() != 6) return std::nullopt;
-        return Triangle{{v[0], v[1]}, {v[2], v[3]}, {v[4], v[5]}};
-*/
+// Создает треугольник из вектора параметров
 std::optional<Shape> MakeTriangle(const std::vector<double> &v) {
-    // Ваш код здесь
+    // 1. Проверяем, что есть 6 параметров: x1, y1, x2, y2, x3, y3
+    // 2. Создаем треугольник (может быть вырожденным)
+    return RequireSize(v, 6).transform(
+        [&v](auto) -> Shape { return Triangle{{v[0], v[1]}, {v[2], v[3]}, {v[4], v[5]}}; });
 }
 
-/**
-    @brief Создаёт прямоугольник из параметров
-    @note Пример того как могла бы выглядеть эта функция:
-        if (v.size() != 4) return std::nullopt;
-        if (v[2] <= 0 || v[3] <= 0) return std::nullopt; // ширина/высота > 0
-        return Rectangle{{v[0], v[1]}, v[2], v[3]};
-*/
+// Создает прямоугольник из вектора параметров
 std::optional<Shape> MakeRectangle(const std::vector<double> &v) {
-    // Ваш код здесь
+    // 1. Проверяем, что есть 4 параметра: x, y (левый нижний угол), ширина, высота
+    // 2. Проверяем, что ширина > 0 и высота > 0
+    // 3. Создаем прямоугольник
+    return RequireSize(v, 4)
+        .and_then([&v](auto) { return RequirePositive(v[2]); })
+        .and_then([&v](auto) { return RequirePositive(v[3]); })
+        .transform([&v](auto) -> Shape { return Rectangle{{v[0], v[1]}, v[2], v[3]}; });
 }
 
-/**
-    @brief Создаёт правильный многоугольник из параметров
-    @note Пример того как могла бы выглядеть эта функция:
-        if (v.size() != 4) return std::nullopt;
-        if (v[2] <= 0) return std::nullopt; // радиус > 0
-        auto sides_opt = parse_double(std::to_string(v[3])); // v[3] — double, но sides — целое
-        if (!sides_opt.has_value()) return std::nullopt;
-        int sides = static_cast<int>(v[3]);
-        if (sides != v[3] || sides < 3) return std::nullopt; // должно быть целым и >=3
-        return RegularPolygon{{v[0], v[1]}, v[2], sides};
-*/
+// Создает правильный многоугольник из вектора параметров
 std::optional<Shape> MakePolygon(const std::vector<double> &v) {
-    // Ваш код здесь
+    // 1. Проверяем, что есть 4 параметра: x, y (центр), радиус, число сторон
+    // 2. Проверяем, что радиус > 0 и число сторон - это целое число >= 3
+    // 3. Создаем правильный многоугольник
+    return RequireSize(v, 4)
+        .and_then([&v](auto) { return RequirePositive(v[2]); })
+        .and_then([&v](auto) { return RequireIntegerAtLeast(v[3], 3); })
+        .transform([&v](auto) -> Shape { return RegularPolygon{{v[0], v[1]}, v[2], static_cast<int>(v[3])}; });
 }
 
 // Парсинг одной фигуры
