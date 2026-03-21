@@ -127,37 +127,48 @@ std::optional<Shape> MakePolygon(const std::vector<double> &v) {
         .transform([&v](auto) -> Shape { return RegularPolygon{{v[0], v[1]}, v[2], static_cast<int>(v[3])}; });
 }
 
-// Парсинг одной фигуры
+// Парсит одну фигуру из строки токена
+// * Вход: строка вида "<тип> <параметры>" (например: "circle 0 0 2.5")
+// * Поддерживаемые типы: circle, line, triangle, rectangle, polygon
+// * Выход: если парсинг успешен, то фигура std::optional<Shape>, иначе std::nullopt
 std::optional<Shape> ParseSingleShape(std::string_view token) {
+    // 1. Разбиваем токен на слова: первое слово - тип фигуры, остальные - параметры
     auto parts = SplitIntoWords(token);
     if (parts.empty())
         return std::nullopt;
 
-    std::string_view type = parts[0];
-    std::string param_str;
+    std::string_view type = parts[0];  // тип фигуры ("circle", "line", ...)
+    std::string param_str;             // строка параметров (для парсинга чисел)
+
+    // 2. Объединяем все слова параметров в одну строку
     for (auto i : std::views::iota(1u, parts.size())) {
         if (!param_str.empty())
             param_str += ' ';
         param_str += std::string(parts[i]);
     }
 
-    // Выбираем конструктор по имени
-    auto get_maker =
-        [](std::string_view t) -> std::optional<std::function<std::optional<Shape>(const std::vector<double> &)>> {
-        if (t == "circle")
-            return MakeCircle;
-        if (t == "line")
-            return MakeLine;
-        if (t == "triangle")
-            return MakeTriangle;
-        if (t == "rectangle")
-            return MakeRectangle;
-        if (t == "polygon")
-            return MakePolygon;
-        return std::nullopt;
+    // Псевдоним типа для фабричной функции фигуры
+    // (принимает вектор параметров, возвращает optional<Shape>)
+    using ShapeMaker = std::function<std::optional<Shape>(const std::vector<double> &)>;
+
+    // 3*. Создаем словарь фабричных функций (инициализируется один раз при первом вызове функции)
+    static const std::unordered_map<std::string_view, ShapeMaker> maker_map = {{"circle", MakeCircle},
+                                                                               {"line", MakeLine},
+                                                                               {"triangle", MakeTriangle},
+                                                                               {"rectangle", MakeRectangle},
+                                                                               {"polygon", MakePolygon}};
+
+    // Фабрика функций: отображает строковый тип фигуры в соответствующую фабричную функцию
+    auto get_maker = [](std::string_view t) -> std::optional<ShapeMaker> {
+        return maker_map.contains(t) ? std::make_optional(maker_map.at(t)) : std::nullopt;
     };
 
-    // Обратите внимание на код ниже
+    // 4. Монадическая цепочка обработки (без исключений):
+    // - Получаем фабричную функцию: get_maker(type) -> std::optional<ShapeMaker> (если тип неизвестен -> nullopt)
+    // - Передаем фабрику в лямбду: and_then([&](auto maker) {...}) (если фабрики нет -> nullopt)
+    // - Парсим строку параметров: ParseDoubles(...) -> std::optional<vector> (если ошибка -> nullopt)
+    // - Применяем фабрику к вектору параметров: and_then(maker) -> std::optional<Shape> (если ошибка -> nullopt)
+    // Результат: если все этапы успешны, то фигура std::optional<Shape>, иначе nullopt
     return get_maker(type).and_then([&](auto maker) { return ParseDoubles(param_str).and_then(maker); });
 }
 
