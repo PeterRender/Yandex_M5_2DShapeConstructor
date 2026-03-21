@@ -1,7 +1,14 @@
 #include "shape_utils.hpp"
 #include <functional>
 
+#include "intersections.hpp"
+#include "queries.hpp"
+
 namespace geometry::utils {
+
+namespace rv = std::ranges::views;  // псевдоним пространства имен отображений
+namespace rs = std::ranges;         // псевдоним пространства имен диапазонов
+
 // Разбивает строку на слова (по пробелам), игнорируя лишние пробелы
 std::vector<std::string_view> SplitIntoWords(std::string_view s) {
     std::vector<std::string_view> words;
@@ -10,10 +17,13 @@ std::vector<std::string_view> SplitIntoWords(std::string_view s) {
 
     while (start < s.size()) {
         // Пропускаем пробелы
-        while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start]))) ++start;
-        if (start >= s.size()) break;
+        while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start])))
+            ++start;
+        if (start >= s.size())
+            break;
         end = start;
-        while (end < s.size() && !std::isspace(static_cast<unsigned char>(s[end]))) ++end;
+        while (end < s.size() && !std::isspace(static_cast<unsigned char>(s[end])))
+            ++end;
         words.push_back(s.substr(start, end - start));
         start = end;
     }
@@ -32,9 +42,11 @@ std::optional<double> ParseDouble(std::string_view s) {
 
 // Парсит строку в вектор double
 std::optional<std::vector<double>> ParseDoubles(std::string_view s) {
-    if (s.empty()) return std::nullopt;
+    if (s.empty())
+        return std::nullopt;
     auto tokens = SplitIntoWords(s);
-    if (tokens.empty()) return std::nullopt;
+    if (tokens.empty())
+        return std::nullopt;
 
     std::vector<double> result;
     result.reserve(tokens.size());
@@ -50,14 +62,12 @@ std::optional<std::vector<double>> ParseDoubles(std::string_view s) {
 }
 
 // Проверяет размер вектора и возвращает его, если совпадает
-std::optional<std::vector<double>> RequireSize(const std::vector<double>& v, size_t expected) {
+std::optional<std::vector<double>> RequireSize(const std::vector<double> &v, size_t expected) {
     return (v.size() == expected) ? std::make_optional(v) : std::nullopt;
 }
 
 // Проверяет, что значение > 0
-std::optional<double> RequirePositive(double x) {
-    return (x > 0) ? std::make_optional(x) : std::nullopt;
-}
+std::optional<double> RequirePositive(double x) { return (x > 0) ? std::make_optional(x) : std::nullopt; }
 
 // Проверяет, что double представляет целое число >= min_value
 std::optional<int> RequireIntegerAtLeast(double d, int min_value) {
@@ -77,8 +87,8 @@ std::optional<int> RequireIntegerAtLeast(double d, int min_value) {
         if (v[2] <= 0) return std::nullopt; // радиус должен быть > 0
         return Circle{{v[0], v[1]}, v[2]};
 */
-std::optional<Shape> MakeCircle(const std::vector<double>& v) {
-    //Ваш код здесь
+std::optional<Shape> MakeCircle(const std::vector<double> &v) {
+    // Ваш код здесь
 }
 
 /**
@@ -87,8 +97,8 @@ std::optional<Shape> MakeCircle(const std::vector<double>& v) {
         if (v.size() != 4) return std::nullopt;
         return Line{{v[0], v[1]}, {v[2], v[3]}};
 */
-std::optional<Shape> MakeLine(const std::vector<double>& v) {
-    //Ваш код здесь
+std::optional<Shape> MakeLine(const std::vector<double> &v) {
+    // Ваш код здесь
 }
 
 /**
@@ -97,8 +107,8 @@ std::optional<Shape> MakeLine(const std::vector<double>& v) {
         if (v.size() != 6) return std::nullopt;
         return Triangle{{v[0], v[1]}, {v[2], v[3]}, {v[4], v[5]}};
 */
-std::optional<Shape> MakeTriangle(const std::vector<double>& v) {
-    //Ваш код здесь
+std::optional<Shape> MakeTriangle(const std::vector<double> &v) {
+    // Ваш код здесь
 }
 
 /**
@@ -108,8 +118,8 @@ std::optional<Shape> MakeTriangle(const std::vector<double>& v) {
         if (v[2] <= 0 || v[3] <= 0) return std::nullopt; // ширина/высота > 0
         return Rectangle{{v[0], v[1]}, v[2], v[3]};
 */
-std::optional<Shape> MakeRectangle(const std::vector<double>& v) {
-    //Ваш код здесь
+std::optional<Shape> MakeRectangle(const std::vector<double> &v) {
+    // Ваш код здесь
 }
 
 /**
@@ -123,39 +133,42 @@ std::optional<Shape> MakeRectangle(const std::vector<double>& v) {
         if (sides != v[3] || sides < 3) return std::nullopt; // должно быть целым и >=3
         return RegularPolygon{{v[0], v[1]}, v[2], sides};
 */
-std::optional<Shape> MakePolygon(const std::vector<double>& v) {
-    //Ваш код здесь
+std::optional<Shape> MakePolygon(const std::vector<double> &v) {
+    // Ваш код здесь
 }
 
 // Парсинг одной фигуры
 std::optional<Shape> ParseSingleShape(std::string_view token) {
     auto parts = SplitIntoWords(token);
-    if (parts.empty()) return std::nullopt;
+    if (parts.empty())
+        return std::nullopt;
 
     std::string_view type = parts[0];
     std::string param_str;
     for (auto i : std::views::iota(1u, parts.size())) {
-        if (!param_str.empty()) param_str += ' ';
+        if (!param_str.empty())
+            param_str += ' ';
         param_str += std::string(parts[i]);
     }
 
     // Выбираем конструктор по имени
-    auto get_maker = [](std::string_view t) 
-        -> std::optional<std::function<std::optional<Shape>(const std::vector<double>&)>> {
-        if (t == "circle")   return MakeCircle;
-        if (t == "line")     return MakeLine;
-        if (t == "triangle") return MakeTriangle;
-        if (t == "rectangle")return MakeRectangle;
-        if (t == "polygon")  return MakePolygon;
+    auto get_maker =
+        [](std::string_view t) -> std::optional<std::function<std::optional<Shape>(const std::vector<double> &)>> {
+        if (t == "circle")
+            return MakeCircle;
+        if (t == "line")
+            return MakeLine;
+        if (t == "triangle")
+            return MakeTriangle;
+        if (t == "rectangle")
+            return MakeRectangle;
+        if (t == "polygon")
+            return MakePolygon;
         return std::nullopt;
     };
 
-    //Обратите внимание на код ниже
-    return get_maker(type)
-        .and_then([&](auto maker) {
-            return ParseDoubles(param_str)
-                .and_then(maker);
-        });
+    // Обратите внимание на код ниже
+    return get_maker(type).and_then([&](auto maker) { return ParseDoubles(param_str).and_then(maker); });
 }
 
 std::vector<Shape> ParseShapes(std::string_view input) {
@@ -166,12 +179,15 @@ std::vector<Shape> ParseShapes(std::string_view input) {
     size_t end = 0;
     while (start < input.size()) {
         end = input.find(';', start);
-        if (end == std::string_view::npos) end = input.size();
+        if (end == std::string_view::npos)
+            end = input.size();
 
         std::string_view token = input.substr(start, end - start);
         // Убираем пробелы по краям
-        while (!token.empty() && std::isspace(static_cast<unsigned char>(token.front()))) token.remove_prefix(1);
-        while (!token.empty() && std::isspace(static_cast<unsigned char>(token.back()))) token.remove_suffix(1);
+        while (!token.empty() && std::isspace(static_cast<unsigned char>(token.front())))
+            token.remove_prefix(1);
+        while (!token.empty() && std::isspace(static_cast<unsigned char>(token.back())))
+            token.remove_suffix(1);
 
         if (!token.empty()) {
             auto shape_opt = ParseSingleShape(token);
@@ -186,26 +202,48 @@ std::vector<Shape> ParseShapes(std::string_view input) {
     return result;
 }
 
+// Функция поиска всех пар пересекающихся фигур
 std::vector<std::pair<Shape, Shape>> FindAllCollisions(std::span<const Shape> shapes) {
-    std::vector<std::pair<Shape, Shape>> collisions;
+    // Проверяем, что в списке есть фигуры
+    if (shapes.empty()) {
+        return {};  // пустой вектор
+    }
 
-    /*
-     * Используйте библиотеку ranges, чтобы найти все коллизии между фигурами методом BoundingBoxesOverlap
-     *
-     * Также используйте наиболее эффективный метод добавления объектов в collisions
-     */
+    // Создаем последовательность индексов всех фигур [0, size)
+    auto all_indices = rv::iota(0u, shapes.size());
 
-    return collisions;
+    // Формируем вектор пар пересекающихся фигур с помощью композиции отображений
+    return rv::cartesian_product(all_indices, all_indices) |  // создаем все пары (i, j) индексов фигур
+           rv::filter([&](const auto &idx_pair) {             // отбираем уникальные пары (i < j) индексов фигур
+               auto &&[i, j] = idx_pair;                      //  с пересекающимися ограничивающими боксами
+               return (i < j) && queries::BoundingBoxesOverlap(shapes[i], shapes[j]);
+           }) |
+           rv::transform([&](const auto &idx_pair) {  // преобразуем индексы в фигуры
+               auto &&[i, j] = idx_pair;
+               return std::pair{shapes[i], shapes[j]};
+           }) |
+           rs::to<std::vector>();  // преобразуем диапазон пар фигур в вектор пар фигур (одно выделение памяти)
 }
 
+// Функция поиска индекса фигуры c max высотой (Y-координатой)
 std::optional<size_t> FindHighestShape(std::span<const Shape> shapes) {
+    // Проверяем, что в списке есть фигуры
+    if (shapes.empty()) {
+        return std::nullopt;
+    }
 
-    /*
-     * Используйте библиотеку ranges, чтобы найти самую высокую фигуру
-     *
-     * Важно: использование ручной итерации по фигурам не разрешается
-     */
+    // Создаем последовательность пар (индекс, фигура)
+    auto enum_shapes = rv::enumerate(shapes);
 
-    return std::nullopt;
+    // Находим пару (индекс, фигура) с max высотой фигуры
+    auto it_max_h = rs::max_element(enum_shapes, std::less<>{},  // ищем max
+                                    [](const auto &pair) {       // проекция: высота фигуры
+                                        auto &&[idx, shape] = pair;
+                                        return queries::GetHeight(shape);
+                                    });
+
+    // Возвращаем индекс - первый элемент пары
+    // (it_max_h гарантированно не end(), т.к. shapes не пуст)
+    return std::get<0>(*it_max_h);
 }
-}
+}  // namespace geometry::utils
