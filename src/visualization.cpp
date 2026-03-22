@@ -67,7 +67,7 @@ void Draw(std::span<const geometry::triangulation::DelaunayTriangle> triangles) 
     const auto &fh = DrawConfig();
 
     for (const auto &[index, d_triangle] : std::ranges::views::enumerate(triangles)) {
-        const geometry::Triangle tri{d_triangle.a, d_triangle.b, d_triangle.c};
+        const geometry::Triangle tri{d_triangle.A(), d_triangle.B(), d_triangle.C()};
         const auto lines = tri.Lines();
         plot(lines.x, lines.y)->line_width(2).color("cyan");
 

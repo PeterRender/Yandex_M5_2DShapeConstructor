@@ -90,6 +90,16 @@ public:
     // Метод, сравнивающий координаты точки с (0.0) с учетом погрешности
     [[nodiscard]] constexpr bool IsZero() const noexcept { return (std::abs(x_) < EPS) && (std::abs(y_) < EPS); }
 
+    // Статический метод, возвращающий точку с min координатами от двух точек
+    [[nodiscard]] static constexpr Point2D Min(const Point2D &a, const Point2D &b) noexcept {
+        return {std::min(a.X(), b.X()), std::min(a.Y(), b.Y())};
+    }
+
+    // Статический метод, возвращающий точку с max координатами от двух точек
+    [[nodiscard]] static constexpr Point2D Max(const Point2D &a, const Point2D &b) noexcept {
+        return {std::max(a.X(), b.X()), std::max(a.Y(), b.Y())};
+    }
+
 private:
     double x_;  // координаты точки
     double y_;
