@@ -1,7 +1,6 @@
 #include "shape_utils.hpp"
 #include <functional>
 
-#include "intersections.hpp"
 #include "queries.hpp"
 
 namespace geometry::utils {

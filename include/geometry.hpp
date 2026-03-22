@@ -79,7 +79,7 @@ public:
     // Длина вектора из (0, 0) в точку
     [[nodiscard]] constexpr double Length() const noexcept {
         // Считается по теореме Пифагора (сумма квадратов под корнем всегда >= 0), поэтому не будет бросать исключение
-        return std::sqrt(x_ * x_ + y_ * y_);
+        return std::sqrt(std::max(0.0, x_ * x_ + y_ * y_));  // защита для значений в окрестности 0
     }
     // Евклидово расстояние между точками
     [[nodiscard]] constexpr double DistanceTo(const Point2D &other) const noexcept { return (*this - other).Length(); }
