@@ -507,7 +507,7 @@ struct std::formatter<geometry::Point2D> {
     // Шаблонный метод-инструкция, отвечающий за преобразование значения Point2D в строку
     // (параметр FormatContext задает, куда выводить результат)
     template <typename FormatContext>
-    auto format(const geometry::Point2D &p, FormatContext &ctx) {
+    auto format(const geometry::Point2D &p, FormatContext &ctx) const {
         return format_to(ctx.out(), "({:.2f}, {:.2f})", p.X(), p.Y());
     }
 };
@@ -543,7 +543,7 @@ struct std::formatter<std::vector<geometry::Point2D>> {
     // Шаблонный метод-инструкция, отвечающий за преобразование значения std::vector<Point2D> в строку
     // (параметр FormatContext задает, куда выводить результат)
     template <typename FormatContext>
-    auto format(const std::vector<geometry::Point2D> &v, FormatContext &ctx) {
+    auto format(const std::vector<geometry::Point2D> &v, FormatContext &ctx) const {
         auto out = ctx.out();  // итератор вывода
 
         // Создаем отображение из отформатированных точек
@@ -577,7 +577,7 @@ struct std::formatter<geometry::Line> {
     // Шаблонный метод-инструкция, отвечающий за преобразование значения Line в строку
     // (параметр FormatContext задает, куда выводить результат)
     template <typename FormatContext>
-    auto format(const geometry::Line &l, FormatContext &ctx) {
+    auto format(const geometry::Line &l, FormatContext &ctx) const {
         return std::format_to(ctx.out(), "Line({}, {})", l.Start(), l.End());
     }
 };
@@ -594,7 +594,7 @@ struct std::formatter<geometry::Circle> {
     // Шаблонный метод-инструкция, отвечающий за преобразование значения Circle в строку
     // (параметр FormatContext задает, куда выводить результат)
     template <typename FormatContext>
-    auto format(const geometry::Circle &c, FormatContext &ctx) {
+    auto format(const geometry::Circle &c, FormatContext &ctx) const {
         return std::format_to(ctx.out(), "Circle(center={}, r={:.2f})", c.Center(), c.Radius());
     }
 };
@@ -611,7 +611,7 @@ struct std::formatter<geometry::Rectangle> {
     // Шаблонный метод-инструкция, отвечающий за преобразование значения Rectangle в строку
     // (параметр FormatContext задает, куда выводить результат)
     template <typename FormatContext>
-    auto format(const geometry::Rectangle &r, FormatContext &ctx) {
+    auto format(const geometry::Rectangle &r, FormatContext &ctx) const {
         return std::format_to(ctx.out(), "Rectangle(bottom_left={}, w={:.2f}, h={:.2f})", r.BottomLeft(), r.Width(),
                               r.Height());
     }
@@ -629,7 +629,7 @@ struct std::formatter<geometry::RegularPolygon> {
     // Шаблонный метод-инструкция, отвечающий за преобразование значения RegularPolygon в строку
     // (параметр FormatContext задает, куда выводить результат)
     template <typename FormatContext>
-    auto format(const geometry::RegularPolygon &p, FormatContext &ctx) {
+    auto format(const geometry::RegularPolygon &p, FormatContext &ctx) const {
         return std::format_to(ctx.out(), "RegularPolygon(center={}, r={:.2f}, sides={})", p.Center(), p.Radius(),
                               p.Sides());
     }
@@ -647,7 +647,7 @@ struct std::formatter<geometry::Triangle> {
     // Шаблонный метод-инструкция, отвечающий за преобразование значения Triangle в строку
     // (параметр FormatContext задает, куда выводить результат)
     template <typename FormatContext>
-    auto format(const geometry::Triangle &t, FormatContext &ctx) {
+    auto format(const geometry::Triangle &t, FormatContext &ctx) const {
         return std::format_to(ctx.out(), "Triangle({}, {}, {})", t.A(), t.B(), t.C());
     }
 };
@@ -664,7 +664,7 @@ struct std::formatter<geometry::Polygon> {
     // Шаблонный метод-инструкция, отвечающий за преобразование значения Polygon в строку
     // (параметр FormatContext задает, куда выводить результат)
     template <typename FormatContext>
-    auto format(const geometry::Polygon &poly, FormatContext &ctx) {
+    auto format(const geometry::Polygon &poly, FormatContext &ctx) const {
         auto out = ctx.out();
         out = std::format_to(out, "Polygon[{} points]: [", poly.Vertices().size());
 
