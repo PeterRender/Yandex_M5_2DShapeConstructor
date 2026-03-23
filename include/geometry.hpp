@@ -213,6 +213,9 @@ public:
     // Метод, возвращающий вершины отрезка
     [[nodiscard]] constexpr std::array<Point2D, 2> Vertices() const noexcept { return {start_, end_}; }
 
+    // Метод, возвращающий число вершин отрезка
+    [[nodiscard]] constexpr size_t Count() const noexcept { return 2; }
+
     // Метод, возвращающий отрезок в формате отрисовки библиотеки Matplot++
     [[nodiscard]] constexpr Lines2D<2> Lines() const noexcept {
         return {{start_.X(), end_.X()}, {start_.Y(), end_.Y()}};
@@ -249,6 +252,9 @@ public:
 
     // Метод, возвращающий вершины треугольника
     [[nodiscard]] constexpr std::array<Point2D, 3> Vertices() const noexcept { return {a_, b_, c_}; }
+
+    // Метод, возвращающий число вершин треугольника
+    [[nodiscard]] constexpr size_t Count() const noexcept { return 3; }
 
     // Метод, возвращающий наибольшую Y координату треугольника
     [[nodiscard]] constexpr double MaxY() const noexcept { return std::max({a_.Y(), b_.Y(), c_.Y()}); }
@@ -301,6 +307,9 @@ public:
         };
     }
 
+    // Метод, возвращающий число вершин прямоугольника
+    [[nodiscard]] constexpr size_t Count() const noexcept { return 4; }
+
     // Метод, возвращающий наибольшую Y координату прямоугольника
     [[nodiscard]] constexpr double MaxY() const noexcept { return bottom_left_.Y() + height_; }
 
@@ -347,6 +356,9 @@ public:
         }
         return points;
     }
+
+    // Метод, возвращающий число вершин правильного многоугольника
+    [[nodiscard]] constexpr size_t Count() const noexcept { return sides_; }
 
     // Метод, возвращающий ограничивающий бокс (квадрат, описанный вокруг окружности)
     [[nodiscard]] constexpr BoundingBox BoundBox() const noexcept {
@@ -399,8 +411,11 @@ public:
     // Метод, возвращающий наибольшую Y координату (верхнюю точку окружности)
     [[nodiscard]] constexpr double MaxY() const noexcept { return center_.Y() + radius_; }
 
-    // Метод, возвращающий аппроксимацию окружности многоугольником с N вершинами
-    [[nodiscard]] constexpr std::vector<Point2D> Vertices(size_t N = 30) const {
+    // Метод, возвращающий аппроксимацию окружности многоугольником с числом вершин по умолчанию
+    [[nodiscard]] constexpr std::vector<Point2D> Vertices() const { return Vertices(Count()); }
+
+    // Метод, возвращающий аппроксимацию окружности многоугольником с заданным N числом вершин
+    [[nodiscard]] constexpr std::vector<Point2D> Vertices(size_t N) const {
         std::vector<Point2D> points;
         points.reserve(N);  // предварительное выделение памяти для эффективности
 
@@ -410,6 +425,9 @@ public:
         }
         return points;
     }
+
+    // Метод, возвращающий число вершин, аппроксимирующих окружность
+    [[nodiscard]] constexpr size_t Count() const noexcept { return DEFAULT_VERTICES; }
 
     // Метод, возвращающий окружность в формате отрисовки библиотеки Matplot++
     // (замкнутая ломаная из N+1 точек, аппроксимирующая окружность)
@@ -429,6 +447,9 @@ public:
 private:
     Point2D center_;  // центр окружности
     double radius_;   // радиус окружности (> 0)
+
+    // Количество аппроксимирующих окружность вершин по умолчанию (общее для всех экземпляров)
+    static inline constexpr size_t DEFAULT_VERTICES = 30;
 };
 
 // Класс произвольного многоугольника (заданного массивом вершин)
@@ -454,6 +475,9 @@ public:
 
     // Метод, возвращающий вершины многоугольника (только для чтения)
     [[nodiscard]] constexpr std::span<const Point2D> Vertices() const noexcept { return points_; }
+
+    // Метод, возвращающий число вершин произвольного многоугольника
+    [[nodiscard]] constexpr size_t Count() const noexcept { return points_.size(); }
 
     // Метод, возвращающий многоугольник в формате отрисовки библиотеки Matplot++
     [[nodiscard]] constexpr Lines2DDyn Lines() const {

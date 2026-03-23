@@ -17,6 +17,24 @@ namespace rv = std::ranges::views;  // псевдоним пространств
 namespace rs = std::ranges;         // псевдоним пространства имен диапазонов
 
 /**
+ * @brief Функция, выводящая индексы и высоты всех фигур
+ *
+ * @param shapes список фигур для анализа
+ */
+void PrintShapeHeights(std::span<const Shape> shapes) {
+    std::println("\n=== Shape Heights ===");
+
+    // Формируем строки пар {индекс фигуры, высота} с помощью композиции отображений
+    auto height_lines = shapes | rv::enumerate |                             // добавляем индексы фигур
+                        rv::transform([](const auto &pair) -> std::string {  // преобразуем пары в строки
+                            const auto &[idx, shape] = pair;
+                            return std::format("  Shape {}: height = {:.4f}", idx, queries::GetHeight(shape));
+                        });
+    // Выводим строки с результатами
+    rs::for_each(height_lines, [](const std::string &line) { std::println("{}", line); });
+}
+
+/**
  * @brief Функция, выводящая информацию о пересечениях заданной фигуры с другими фигурами
  *
  * @param shape фигура, для которой проверяются пересечения (индекс 0 в выводе)
@@ -255,12 +273,43 @@ void PerformExtraShapeAnalysis(std::span<const Shape> shapes) {
     std::println("  Shape with max height: index {} (height = {:.4f})", max_it->first, max_it->second);
 }
 
+/**
+ * @brief Функция, собирающая все вершины из всех фигур
+ *
+ * @param shapes список фигур
+ * @return вектор всех вершин всех фигур
+ */
+[[nodiscard]] std::vector<Point2D> CollectAllVertices(std::span<const Shape> shapes) {
+    // Первый проход: подсчитываем общее количество вершин
+    size_t total_vertices = 0;
+    for (const auto &shape : shapes) {
+        std::visit([&total_vertices](const auto &s) { total_vertices += s.Count(); }, shape);
+    }
+
+    // Второй проход: собираем вершины с предварительным резервированием
+    std::vector<Point2D> points;
+    points.reserve(total_vertices);  // одно выделение памяти
+    for (const auto &shape : shapes) {
+        std::visit(
+            [&points](const auto &s) {
+                auto verts = s.Vertices();  // использует Vertices() без параметров
+                points.insert(points.end(), verts.begin(), verts.end());
+            },
+            shape);
+    }
+
+    return points;  // работает оптимизация RVO (без копирования)
+}
+
 int main() {
     std::vector<Shape> shapes = utils::ParseShapes("circle 0 0 1.5; line 1 2 3 4; polygon 0 0 2 5; triangle 0 0 1 0 "
                                                    "0.5 1; polygon 0 0 1 2; badshape; circle 0 0 -1");
     std::println("Parsed {} shapes", shapes.size());
 
-    // Выведите индекс каждой фигуры и её высоту
+    //
+    // Выводим индексы и высоты всех фигур
+    //
+    PrintShapeHeights(shapes);
 
     //
     // Вызываем разработанные функции
@@ -283,9 +332,7 @@ int main() {
     //
     // Формируем список из вершин всех фигур
     //
-    std::vector<Point2D> points;
-
-    /* ваш код здесь */
+    std::vector<Point2D> points = CollectAllVertices(shapes);
 
     //
     // Находим список точек, для построения выпуклой оболочки - convex hull - алгоритмом Грэхема
