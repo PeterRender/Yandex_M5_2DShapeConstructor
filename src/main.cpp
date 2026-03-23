@@ -74,6 +74,17 @@ void PrintAllIntersections(const Shape &shape, std::span<const Shape> others) {
     rs::for_each(output_strings, [](const std::string &line) { std::println("{}", line); });
 }
 
+/**
+ * @brief Функция, выводящая расстояния от заданной точки до первых 5 фигур
+ *
+ * @param p точка, от которой вычисляются расстояния
+ * @param shapes список фигур для анализа
+ *
+ * Алгоритм:
+ * 1. Берем первые 5 фигур из списка (или меньше, если фигур недостаточно)
+ * 2. Для каждой фигуры вычисляем расстояние до точки
+ * 3. Выводим результат в формате "Расстояние от точки P до фигуры S равно D"
+ */
 void PrintDistancesFromPointToShapes(Point2D p, std::span<const Shape> shapes) {
     std::println("\n=== Distance from Point Test ===");
 
@@ -82,6 +93,13 @@ void PrintDistancesFromPointToShapes(Point2D p, std::span<const Shape> shapes) {
      * Затем найдите расстояния от заданной точки до всех выбранных фигур.
      * Выведите результат в формате "Расстояние от точки P до фигуры S равно D"
      */
+
+    // Берем первые 5 фигур, добавляем индексы (0..4), форматируем строки и выводим
+    rs::for_each(shapes | rv::take(5) | rv::enumerate, [&p](const auto &pair) {
+        const auto &[idx, shape] = pair;
+        double distance = queries::DistanceToPoint(shape, p);
+        std::println("  Distance from point {} to shape {} is {:.4f}", p, idx, distance);
+    });
 }
 
 void PerformShapeAnalysis(std::span<const Shape> shapes) {
