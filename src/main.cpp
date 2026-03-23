@@ -40,6 +40,12 @@ void PrintAllIntersections(const Shape &shape, std::span<const Shape> others) {
      *     - Фигуры B и C не пересекаются
      */
 
+    // Проверяем, что есть фигуры для теста
+    if (others.empty()) {
+        std::println("  No shapes to test");
+        return;
+    }
+
     // Псевдоним результата обработки комбинации фигур {индекс второй фигуры, результат пересечения}
     using ShapeResult = std::pair<size_t, std::optional<Point2D>>;
 
@@ -94,6 +100,12 @@ void PrintDistancesFromPointToShapes(Point2D p, std::span<const Shape> shapes) {
      * Выведите результат в формате "Расстояние от точки P до фигуры S равно D"
      */
 
+    // Проверяем, что есть фигуры для теста
+    if (shapes.empty()) {
+        std::println("  No shapes to test");
+        return;
+    }
+
     // Берем первые 5 фигур, добавляем индексы (0..4), форматируем строки и выводим
     rs::for_each(shapes | rv::take(5) | rv::enumerate, [&p](const auto &pair) {
         const auto &[idx, shape] = pair;
@@ -121,6 +133,12 @@ void PerformShapeAnalysis(std::span<const Shape> shapes) {
      *     - Найти самую высокую фигуру (чья высота наибольшая)expected
      *     - Вывести расстояние между любыми двумя фигурами, которые поддерживают данную функциональность
      */
+
+    // Проверяем, что есть фигуры для теста
+    if (shapes.empty()) {
+        std::println("  No shapes to test");
+        return;
+    }
 
     // 1. Находим все пересекающиеся пары фигур и выводим их
     std::println("\n--- Collisions ---");
@@ -177,6 +195,15 @@ void PerformShapeAnalysis(std::span<const Shape> shapes) {
     }
 }
 
+/**
+ * @brief Функция, выполняющая дополнительный анализ фигур
+ *
+ * @param shapes список фигур для анализа
+ *
+ * Анализ включает:
+ * 1. Вывод первых 3 фигур, которые находятся выше 50.0
+ * 2. Вывод фигур с наименьшей и наибольшей высотами
+ */
 void PerformExtraShapeAnalysis(std::span<const Shape> shapes) {
     std::println("\n=== Shape Extra Analysis ===");
 
@@ -185,6 +212,47 @@ void PerformExtraShapeAnalysis(std::span<const Shape> shapes) {
      *     - Вывести 3 любые фигуры, которые находятся выше 50.0
      *     - Вывести фигуры с наименьшей и с наибольшей высотами
      */
+
+    // Проверяем, что есть фигуры для теста
+    if (shapes.empty()) {
+        std::println("  No shapes to test");
+        return;
+    }
+
+    // Создаем диапазон пар (индекс, высота) для всех фигур
+    auto h_pairs = shapes | rv::enumerate |  // добавляем индексы
+                   rv::transform([](const auto &pair) -> std::pair<size_t, double> {
+                       const auto &[idx, shape] = pair;
+                       return {idx, queries::GetHeight(shape)};  // вычисляем высоту один раз
+                   }) |
+                   rs::to<std::vector>();  // преобразуем отображение в вектор (для min/max нужны все элементы)
+
+    // 1. Выводим первые 3 фигуры, у которых высота > 50.0
+    std::println("\n--- Shapes above 50.0 ---");
+    constexpr double THRES_H = 50.0;  // пороговая высота фигур
+
+    // Отбираем первые 3 фигуры, у которых h > THRES_H
+    auto above_shapes = h_pairs | rv::filter([](const auto &pair) { return pair.second > THRES_H; }) | rv::take(3);
+
+    // Выводим результат
+    if (above_shapes.empty()) {
+        std::println("  No shapes found above {:.1f}", THRES_H);
+    } else {
+        for (const auto &[idx, height] : above_shapes) {
+            std::println("  Shape {}: height = {:.4f}", idx, height);
+        }
+    }
+
+    // 2. Находим и выводим фигуры с наименьшей и наибольшей высотами
+    std::println("\n--- Min and Max Height Shapes ---");
+
+    // Находим фигуры с min и max высотами (за один проход)
+    auto [min_it, max_it] =
+        rs::minmax_element(h_pairs, [](const auto &a, const auto &b) { return a.second < b.second; });
+
+    // Выводим результат (итераторы валидны, т.к. shapes и h_pairs не пусты)
+    std::println("  Shape with min height: index {} (height = {:.4f})", min_it->first, min_it->second);
+    std::println("  Shape with max height: index {} (height = {:.4f})", max_it->first, max_it->second);
 }
 
 int main() {
