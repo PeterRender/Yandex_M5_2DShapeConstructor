@@ -1,9 +1,6 @@
 #pragma once
 #include "geometry.hpp"
-#include <algorithm>
 #include <expected>
-#include <ranges>
-#include <stack>
 #include <vector>
 
 namespace geometry::convex_hull {

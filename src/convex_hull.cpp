@@ -73,7 +73,7 @@ namespace geometry::convex_hull {
     std::sort(points.begin() + 1, points.end(), [&start_point](const Point2D &p1, const Point2D &p2) noexcept {
         double cross = CrossProduct(p1, start_point, p2);
 
-        // Если коллинеарны, берем ближайшую
+        // Если коллинеарны, берем ближайшую по радиусу
         if (std::abs(cross) < EPS) {
             return start_point.DistanceTo(p1) < start_point.DistanceTo(p2);
         }
@@ -89,7 +89,7 @@ namespace geometry::convex_hull {
         for (const auto &new_p : points) {
             // Удаляем точки при правом повороте или коллинеарности (cross <= EPS)
             // Оставляем только точки, дающие левый поворот (cross > EPS)
-            while (hull.Size() > 1 && CrossProduct(hull.NextToTop(), hull.Top(), new_p) <= EPS) {
+            while (hull.Size() > 1 && CrossProduct(hull.Top(), hull.NextToTop(), new_p) <= EPS) {
                 hull.Pop();
             }
             hull.Push(new_p);  // единственное место, где может быть bad_alloc

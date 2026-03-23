@@ -318,12 +318,6 @@ void PerformExtraShapeAnalysis(std::span<const Shape> shapes) {
 [[nodiscard]] bool AddConvexHullToShapes(std::vector<Shape> &shapes, std::span<Point2D> points) {
     std::println("\n=== Convex Hull Construction ===");
 
-    // Отладочный вывод
-    std::println("  Total points collected: {}", points.size());
-    for (const auto &p : points | std::views::take(20)) {
-        std::println("    Point: ({:.2f}, {:.2f})", p.X(), p.Y());
-    }
-
     // Строим выпуклую оболочку и перемещаем ее в список фигур
     return convex_hull::GrahamScan(points)
         .and_then([&shapes](std::vector<Point2D> hull_points) {  // hull_points получает значение через move!
