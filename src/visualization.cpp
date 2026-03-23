@@ -48,15 +48,41 @@ void Draw(std::span<geometry::Shape> shapes) {
          *
          */
 
-        // ваш код тут
-        //  Add shape number
+        // Отрисовываем фигуру с помощью std::visit и мультилямбды
+        std::visit(Multilambda{[](const Line &line) {
+                                   auto lines = line.Lines();
+                                   plot(lines.x, lines.y)->line_width(2).color("yellow");
+                               },
+                               [](const Triangle &triangle) {
+                                   auto lines = triangle.Lines();
+                                   plot(lines.x, lines.y)->line_width(2).color("blue");
+                               },
+                               [](const Rectangle &rect) {
+                                   auto lines = rect.Lines();
+                                   plot(lines.x, lines.y)->line_width(2).color("green");
+                               },
+                               [](const RegularPolygon &polygon) {
+                                   auto lines = polygon.Lines();
+                                   plot(lines.x, lines.y)->line_width(2).color("magenta");
+                               },
+                               [](const Circle &circle) {
+                                   auto lines = circle.Lines();
+                                   plot(lines.x, lines.y)->line_width(2).color("red");
+                               },
+                               [](const Polygon &polygon) {
+                                   auto lines = polygon.Lines();
+                                   plot(lines.x, lines.y)->line_width(2).color("cyan");
+                               }},
+                   shape);
+
+        // Добавляем номер фигуры в центр
         const auto center = shape.visit([](auto &&s) { return s.Center(); });
         auto t = text(center.X(), center.Y(), std::to_string(index));
         t->font_size(14);
         t->color("black");
     }
 
-    // Display plot
+    // Отображаем график
     fh->show();
 }
 
@@ -71,14 +97,14 @@ void Draw(std::span<const geometry::triangulation::DelaunayTriangle> triangles) 
         const auto lines = tri.Lines();
         plot(lines.x, lines.y)->line_width(2).color("cyan");
 
-        // Add triangle number
+        // Добавляем номер треугольника Делоне в центр
         const auto center = tri.Center();
         auto t = text(center.X(), center.Y(), std::to_string(index));
         t->font_size(14);
         t->color("black");
     }
 
-    // Display plot
+    // Отображаем график
     fh->show();
 }
 
