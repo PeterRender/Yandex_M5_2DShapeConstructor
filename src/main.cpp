@@ -301,6 +301,38 @@ void PerformExtraShapeAnalysis(std::span<const Shape> shapes) {
     return points;  // работает оптимизация RVO (без копирования)
 }
 
+/**
+ * @brief Функция, добавляющая в список фигур выпуклую оболочку из набора точек
+ *
+ * @param shapes список фигур (будет изменён: добавится оболочка)
+ * @param points набор точек для построения оболочки
+ *
+ * Алгоритм:
+ * 1. Вызываем GrahamScan для построения выпуклой оболочки
+ * 2. Если построение успешно, создаём Polygon из полученных точек
+ * 3. Добавляем многоугольник в список фигур
+ * 4. Выводим информацию о результате
+ *
+ * @return true, если оболочка успешно построена и добавлена, иначе false
+ */
+[[nodiscard]] bool AddConvexHullToShapes(std::vector<Shape> &shapes, std::span<Point2D> points) {
+    std::println("\n=== Convex Hull Construction ===");
+
+    // Строим выпуклую оболочку и перемещаем ее в список фигур
+    return convex_hull::GrahamScan(points)
+        .and_then([&shapes](std::vector<Point2D> hull_points) {  // hull_points получает значение через move!
+            std::println("  Convex hull built with {} points", hull_points.size());
+            shapes.emplace_back(Polygon{std::move(hull_points)});
+            std::println("  Added convex hull polygon to shapes (index: {})", shapes.size() - 1);
+            return std::expected<bool, std::string>{true};
+        })
+        .or_else([](const std::string &error) {
+            std::println("  Failed to build convex hull: {}", error);
+            return std::expected<bool, std::string>{false};
+        })
+        .value();
+}
+
 int main() {
     std::vector<Shape> shapes = utils::ParseShapes("circle 0 0 1.5; line 1 2 3 4; polygon 0 0 2 5; triangle 0 0 1 0 "
                                                    "0.5 1; polygon 0 0 1 2; badshape; circle 0 0 -1");
@@ -339,8 +371,8 @@ int main() {
     // Создаём из них объект класса `Polygon` и добавляем его в список shapes
     // Рисуем все фигуры
     //
-
-    /* ваш код здесь */
+    if (AddConvexHullToShapes(shapes, points))
+        geometry::visualization::Draw(shapes);
 
     //
     // после изучения графика - нажмите Enter чтобы продолжить выполнение и построить 3ий график
