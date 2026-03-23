@@ -333,6 +333,34 @@ void PerformExtraShapeAnalysis(std::span<const Shape> shapes) {
         .value();
 }
 
+/**
+ * @brief Функция, строящая триангуляцию Делоне для набора точек
+ *
+ * @param out_triangles выходной вектор треугольников Делоне
+ * @param points набор точек для триангуляции
+ * @return true, если триангуляция успешно построена, иначе false
+ *
+ * @note В случае успеха out_triangles будет содержать треугольники Делоне
+ */
+[[nodiscard]] bool BuildDelaunayTriangulation(std::vector<triangulation::DelaunayTriangle> &out_triangles,
+                                              std::span<const Point2D> points) {
+    std::println("\n=== Delaunay Triangulation ===");
+    std::println("Points for triangulation: {}", points);
+
+    // Строим триангуляцию Делоне и перемещаем ее в выходной вектор треугольников
+    return triangulation::DelaunayTriangulation(points)
+        .and_then([&](std::vector<triangulation::DelaunayTriangle> triangles) {
+            std::println("  Triangulation built with {} triangles", triangles.size());
+            out_triangles = std::move(triangles);
+            return std::expected<bool, std::string>{true};
+        })
+        .or_else([](const std::string &error) {
+            std::println("  Failed to build triangulation: {}", error);
+            return std::expected<bool, std::string>{false};
+        })
+        .value();
+}
+
 int main() {
     std::vector<Shape> shapes = utils::ParseShapes("circle 0 0 1.5; line 1 2 3 4; polygon 0 0 2 5; triangle 0 0 1 0 "
                                                    "0.5 1; polygon 0 0 1 2; badshape; circle 0 0 -1");
@@ -388,6 +416,9 @@ int main() {
         // После успешного завершения алгоритма - выведите результат для проверки
         // используя geometry::visualization::Draw
         //
+        std::vector<triangulation::DelaunayTriangle> triangles;
+        if (BuildDelaunayTriangulation(triangles, points))
+            geometry::visualization::Draw(triangles);
     }
     return 0;
 }
