@@ -102,6 +102,16 @@ void PrintDistancesFromPointToShapes(Point2D p, std::span<const Shape> shapes) {
     });
 }
 
+/**
+ * @brief Функция, выполняющая комплексный анализ фигур
+ *
+ * @param shapes список фигур для анализа
+ *
+ * Анализ включает:
+ * 1. Поиск всех пересекающихся пар фигур методом Bounding Box
+ * 2. Поиск самой высокой фигуры
+ * 3. Вывод расстояния между первой парой фигур, поддерживающих вычисление расстояния
+ */
 void PerformShapeAnalysis(std::span<const Shape> shapes) {
     std::println("\n=== Shape Analysis ===");
 
@@ -111,6 +121,60 @@ void PerformShapeAnalysis(std::span<const Shape> shapes) {
      *     - Найти самую высокую фигуру (чья высота наибольшая)expected
      *     - Вывести расстояние между любыми двумя фигурами, которые поддерживают данную функциональность
      */
+
+    // 1. Находим все пересекающиеся пары фигур и выводим их
+    std::println("\n--- Collisions ---");
+    auto collisions = utils::FindAllCollisions(shapes);
+
+    if (collisions.empty()) {
+        std::println("  No collisions found");
+    } else {
+        // Формируем строки вывода для каждой коллизии с индексом
+        auto collision_lines = collisions | rv::enumerate | rv::transform([&shapes](const auto &pair) -> std::string {
+                                   const auto &[idx, collision_pair] = pair;
+                                   const auto &[s1, s2] = collision_pair;
+                                   size_t idx1 = std::distance(shapes.data(), &s1);
+                                   size_t idx2 = std::distance(shapes.data(), &s2);
+                                   return std::format("  Collision {}: shape {} and shape {}", idx, idx1, idx2);
+                               });
+
+        rs::for_each(collision_lines, [](const std::string &line) { std::println("{}", line); });
+    }
+
+    // 2. Находим самую высокую фигуру и выводим результат (монадический стиль)
+    std::println("\n--- Highest Shape ---");
+    std::println("{}", utils::FindHighestShape(shapes)         // ищем фигуру с max высотой
+                           .transform([&shapes](size_t idx) {  // если есть, формируем строку с индексом и высотой
+                               return std::format("  Highest shape is at index {} with height {:.4f}", idx,
+                                                  queries::GetHeight(shapes[idx]));
+                           })
+                           .value_or(std::string("  No shapes found")));  // иначе - строку об отсутствии фигур
+
+    // 3. Находим первую пару фигур, поддерживающих вычисление расстояния, и выводим результат
+    auto all_indices = rv::iota(0u, shapes.size());  // создаем последовательность индексов всех фигур [0, size)
+
+    // Находим первую поддерживаемую пару с помощью композиции отображений (ленивые вычисления)
+    auto result =
+        rv::cartesian_product(all_indices, all_indices) |  // создаем все пары (i, j) индексов фигур
+        rv::filter([&](const auto &idx_pair) {             // отбираем уникальные пары (i < j) индексов фигур
+            auto &&[i, j] = idx_pair;
+            return (i < j);
+        }) |
+        rv::transform([&shapes](const auto &pair) {  // преобразуем в пару {(i, j), опц. расстояние}
+            const auto &[i, j] = pair;
+            return std::make_pair(pair, queries::DistanceBetweenShapes(shapes[i], shapes[j]));
+        }) |
+        rv::filter([](const auto &item) { return item.second.has_value(); }) |  // отсеиваем неподдерживаемые пары
+        rv::take(1);                                                            // берем только первую подходящую пару
+
+    // Выводим результат, если нашли подходящую пару
+    if (auto it = rs::begin(result); it != rs::end(result)) {
+        const auto &[pair, distance] = *it;
+        const auto &[i, j] = pair;
+        std::println("  Distance between shape {} and shape {}: {:.4f}", i, j, distance.value());
+    } else {
+        std::println("  No supported shape pairs found");
+    }
 }
 
 void PerformExtraShapeAnalysis(std::span<const Shape> shapes) {
