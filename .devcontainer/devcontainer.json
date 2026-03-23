@@ -11,6 +11,13 @@
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "remoteUser": "dev",
   "postStartCommand": "conan profile detect || true",
+    "runArgs": [
+    "--env", "DISPLAY=host.docker.internal:0.0",
+    "--env", "QT_X11_NO_MITSHM=1"
+  ],
+  "mounts": [
+    "source=${localEnv:TEMP}/.X11-unix,target=/tmp/.X11-unix,type=bind,consistency=cached"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [
