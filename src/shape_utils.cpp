@@ -171,6 +171,7 @@ std::optional<Shape> ParseSingleShape(std::string_view token) {
     return get_maker(type).and_then([&](auto maker) { return ParseDoubles(param_str).and_then(maker); });
 }
 
+// Функция парсинга строковых описаний фигур (токенов) в массив объектов
 std::vector<Shape> ParseShapes(std::string_view input) {
     std::vector<Shape> result;
 
