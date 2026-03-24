@@ -2,7 +2,6 @@
 #include "geometry.hpp"
 
 #include <matplot/matplot.h>
-#include <print>
 
 namespace geometry::visualization {
 
