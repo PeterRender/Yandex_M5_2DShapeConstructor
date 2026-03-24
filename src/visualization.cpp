@@ -5,10 +5,14 @@
 
 namespace geometry::visualization {
 
+// Мультилямбда для удобного создания посетителей.
+// Объединяет несколько лямбда-выражений в один вызываемый объект.
+// Используется в std::visit для обработки разных типов фигур.
 template <class... Ts>
 struct Multilambda : Ts... {
     using Ts::operator()...;
 };
+
 auto DrawConfig() {
     using namespace geometry;
     using namespace matplot;

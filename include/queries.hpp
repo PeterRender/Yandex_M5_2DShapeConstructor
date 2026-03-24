@@ -6,14 +6,6 @@
 
 namespace geometry::queries {
 
-// Мультилямбда для удобного создания посетителей.
-// Объединяет несколько лямбда-выражений в один вызываемый объект.
-// Используется в std::visit для обработки разных типов фигур.
-template <class... Ts>
-struct Multilambda : Ts... {
-    using Ts::operator()...;
-};
-
 // Класс-посетитель для вычисления расстояния от точки до фигуры
 // Особенности:
 // - для линии вычисляется расстояние до ближайшей точки на отрезке
@@ -54,45 +46,14 @@ public:
     }
 
     // Оператор, реализующий расчет расстояния от точки до треугольника
-    [[nodiscard]] double operator()(const Triangle &triangle) const {
-        auto vertices = triangle.Vertices();
-        double min_distance = std::numeric_limits<double>::max();
-
-        // Вычисляем расстояние от точки до каждой стороны треугольника и выбираем наименьшее
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            Line edge{vertices[i], vertices[(i + 1) % vertices.size()]};  // сторона треугольника
-            min_distance = std::min(min_distance, (*this)(edge));         // оператор расчета расстояния "точка-отрезок"
-        }
-
-        return min_distance;
-    }
+    [[nodiscard]] double operator()(const Triangle &triangle) const { return DistanceToPolygon(triangle.Vertices()); }
 
     // Оператор, реализующий расчет расстояния от точки до прямоугольника
-    [[nodiscard]] double operator()(const Rectangle &rect) const {
-        auto vertices = rect.Vertices();
-        double min_distance = std::numeric_limits<double>::max();
-
-        // Вычисляем расстояние от точки до каждой стороны прямоугольника и выбираем наименьшее
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            Line edge{vertices[i], vertices[(i + 1) % vertices.size()]};  // сторона прямоугольника
-            min_distance = std::min(min_distance, (*this)(edge));         // оператор расчета расстояния "точка-отрезок"
-        }
-
-        return min_distance;
-    }
+    [[nodiscard]] double operator()(const Rectangle &rect) const { return DistanceToPolygon(rect.Vertices()); }
 
     // Оператор, реализующий расчет расстояния от точки до правильного многоугольника
     [[nodiscard]] double operator()(const RegularPolygon &polygon) const {
-        auto vertices = polygon.Vertices();
-        double min_distance = std::numeric_limits<double>::max();
-
-        // Вычисляем расстояние от точки до каждой стороны многоугольника и выбираем наименьшее
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            Line edge{vertices[i], vertices[(i + 1) % vertices.size()]};  // сторона многоугольника
-            min_distance = std::min(min_distance, (*this)(edge));         // оператор расчета расстояния "точка-отрезок"
-        }
-
-        return min_distance;
+        return DistanceToPolygon(polygon.Vertices());
     }
 
     // Оператор, реализующий расчет расстояния от точки до окружности
@@ -104,19 +65,22 @@ public:
     }
 
     // Оператор, реализующий расчет расстояния от точки до произвольного многоугольника
-    [[nodiscard]] double operator()(const Polygon &polygon) const {
-        // Упрощенный алгоритм: минимальное расстояние до вершин.
-        // В более точной реализации требуется проверка всех сторон.
-        double min_distance = std::numeric_limits<double>::max();
-
-        // Вычисляем расстояние от точки до вершины многоугольника и выбираем наименьшее
-        for (const auto &p : polygon.Vertices()) {
-            min_distance = std::min(min_distance, point_.DistanceTo(p));
-        }
-        return min_distance;
-    }
+    [[nodiscard]] double operator()(const Polygon &polygon) const { return DistanceToPolygon(polygon.Vertices()); }
 
 private:
+    // Общий метод для вычисления расстояния от точки до многоугольника
+    // (минимальное расстояние до всех сторон)
+    [[nodiscard]] double DistanceToPolygon(std::span<const Point2D> vertices) const {
+        double min_distance = std::numeric_limits<double>::max();
+
+        // Вычисляем расстояние от точки до каждой стороны многоугольника и выбираем наименьшее
+        for (size_t i = 0; i < vertices.size(); ++i) {
+            Line edge{vertices[i], vertices[(i + 1) % vertices.size()]};  // сторона многоугольника
+            min_distance = std::min(min_distance, (*this)(edge));         // оператор расчета расстояния "точка-отрезок"
+        }
+
+        return min_distance;
+    }
     Point2D point_;  // точка, от которой считается расстояние
 };
 
