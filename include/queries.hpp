@@ -6,267 +6,275 @@
 
 namespace geometry::queries {
 
-template <class... Ts>
-struct Multilambda : Ts... {
-    using Ts::operator()...;
-};
+// Класс-посетитель для вычисления расстояния от точки до фигуры
+// Особенности:
+// - для линии вычисляется расстояние до ближайшей точки на отрезке
+// - для многоугольников (треугольник, прямоугольник, правильный многоугольник): min расстояние до всех его сторон
+// - для окружности: max(0, расстояние до центра - радиус)
+// - для произвольного многоугольника: min расстояние до всех вершин (упрощенная реализация)
+class PointToShapeDistanceVisitor {
+public:
+    // Параметрический конструктор, принимающий точку, от которой считается расстояние
+    explicit PointToShapeDistanceVisitor(const Point2D &p) : point_(p) {}
 
-struct DistanceVisitor {
-    Point2D point;
+    // Оператор, реализующий расчет расстояния от точки до отрезка прямой
+    [[nodiscard]] double operator()(const Line &line) const {
+        // Алгоритм:
+        // 1. Находим проекцию точки на бесконечную прямую
+        // 2. Ограничиваем параметр t диапазоном [0,1] (точка на отрезке)
+        // 3. Вычисляем расстояние от исходной точки до проекции
 
-    explicit DistanceVisitor(const Point2D &p) : point(p) {}
+        Point2D line_vec = line.Dir();              // направляющий вектор отрезка
+        Point2D point_vec = point_ - line.Start();  // вектор от начала отрезка к точке
 
-    double operator()(const Line &line) const {
-        Point2D line_vec = line.end - line.start;
-        Point2D point_vec = point - line.start;
+        // Если отрезок вырожден в точку
+        if (line_vec.IsZero()) {
+            return point_.DistanceTo(line.Start());
+        }
 
+        // Находим параметр t проекции на прямую
         double line_length_sq = line_vec.Dot(line_vec);
-        if (line_length_sq == 0) {
-            return point.DistanceTo(line.start);
-        }
+        double t = point_vec.Dot(line_vec) / line_length_sq;
 
-        double t = std::clamp(point_vec.Dot(line_vec) / line_length_sq, 0.0, 1.0);
-        Point2D projection = line.start + line_vec * t;
+        // Ограничиваем t диапазоном отрезка [0,1]
+        t = std::clamp(t, 0.0, 1.0);
 
-        return point.DistanceTo(projection);
+        // Вычисляем точку проекции на отрезке
+        Point2D projection = line.Start() + line_vec * t;
+
+        return point_.DistanceTo(projection);
     }
 
-    double operator()(const Triangle &triangle) const {
-        auto vertices = triangle.Vertices();
+    // Оператор, реализующий расчет расстояния от точки до треугольника
+    [[nodiscard]] double operator()(const Triangle &triangle) const { return DistanceToPolygon(triangle.Vertices()); }
+
+    // Оператор, реализующий расчет расстояния от точки до прямоугольника
+    [[nodiscard]] double operator()(const Rectangle &rect) const { return DistanceToPolygon(rect.Vertices()); }
+
+    // Оператор, реализующий расчет расстояния от точки до правильного многоугольника
+    [[nodiscard]] double operator()(const RegularPolygon &polygon) const {
+        return DistanceToPolygon(polygon.Vertices());
+    }
+
+    // Оператор, реализующий расчет расстояния от точки до окружности
+    [[nodiscard]] double operator()(const Circle &circle) const {
+        // Формула: max(0, расстояние до центра - радиус)
+        // Если точка внутри окружности, расстояние = 0
+        double center_distance = point_.DistanceTo(circle.Center());
+        return std::max(0.0, center_distance - circle.Radius());
+    }
+
+    // Оператор, реализующий расчет расстояния от точки до произвольного многоугольника
+    [[nodiscard]] double operator()(const Polygon &polygon) const { return DistanceToPolygon(polygon.Vertices()); }
+
+private:
+    // Общий метод для вычисления расстояния от точки до многоугольника
+    // (минимальное расстояние до всех сторон)
+    [[nodiscard]] double DistanceToPolygon(std::span<const Point2D> vertices) const {
         double min_distance = std::numeric_limits<double>::max();
 
+        // Вычисляем расстояние от точки до каждой стороны многоугольника и выбираем наименьшее
         for (size_t i = 0; i < vertices.size(); ++i) {
-            Line edge{vertices[i], vertices[(i + 1) % vertices.size()]};
-            min_distance = std::min(min_distance, (*this)(edge));
+            Line edge{vertices[i], vertices[(i + 1) % vertices.size()]};  // сторона многоугольника
+            min_distance = std::min(min_distance, (*this)(edge));         // оператор расчета расстояния "точка-отрезок"
         }
 
         return min_distance;
     }
-
-    double operator()(const Rectangle &rect) const {
-        auto vertices = rect.Vertices();
-        double min_distance = std::numeric_limits<double>::max();
-
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            Line edge{vertices[i], vertices[(i + 1) % vertices.size()]};
-            min_distance = std::min(min_distance, (*this)(edge));
-        }
-
-        return min_distance;
-    }
-
-    double operator()(const RegularPolygon &polygon) const {
-        auto vertices = polygon.Vertices();
-        double min_distance = std::numeric_limits<double>::max();
-
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            Line edge{vertices[i], vertices[(i + 1) % vertices.size()]};
-            min_distance = std::min(min_distance, (*this)(edge));
-        }
-
-        return min_distance;
-    }
-
-    double operator()(const Circle &circle) const {
-        double center_distance = point.DistanceTo(circle.center_p);
-        return std::max(0.0, center_distance - circle.radius);
-    }
-
-    double operator()(const Polygon &polygon) const {
-        double min_distance = std::numeric_limits<double>::max();
-        for (const auto &p : polygon.Vertices()) {
-            min_distance = std::min(min_distance, point.DistanceTo(p));
-        }
-        return min_distance;
-    }
+    Point2D point_;  // точка, от которой считается расстояние
 };
 
-struct PointToShapeDistanceVisitor {
-    Point2D point;
+// Класс-посетитель для проверки принадлежности точки фигуре
+// Особенности:
+// - для отрезка: точка лежит на прямой и между концами
+// - для треугольника: метод barycentric coordinates или проверка знаков
+// - для прямоугольника: проверка попадания в диапазон координат
+// - для правильного многоугольника: метод ray casting (четность пересечений)
+// - для окружности: сравнение расстояния с радиусом
+// - для произвольного многоугольника: ray casting
+class PointInShapeVisitor {
+public:
+    // Параметрический конструктор, принимающий точку, для которой выполняется проверка
+    explicit PointInShapeVisitor(const Point2D &p) : point_(p) {}
 
-    explicit PointToShapeDistanceVisitor(const Point2D &p) : point(p) {}
-
-    double operator()(const Line &line) const {
-        Point2D line_vec = line.end - line.start;
-        Point2D point_vec = point - line.start;
-
-        double line_length_sq = line_vec.Dot(line_vec);
-        if (line_length_sq == 0) {
-            return point.DistanceTo(line.start);
-        }
-
-        double t = std::clamp(point_vec.Dot(line_vec) / line_length_sq, 0.0, 1.0);
-        Point2D projection = line.start + line_vec * t;
-
-        return point.DistanceTo(projection);
-    }
-
-    double operator()(const Triangle &triangle) const {
-        auto vertices = triangle.Vertices();
-        double min_distance = std::numeric_limits<double>::max();
-
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            Line edge{vertices[i], vertices[(i + 1) % vertices.size()]};
-            min_distance = std::min(min_distance, (*this)(edge));
-        }
-
-        return min_distance;
-    }
-
-    double operator()(const Rectangle &rect) const {
-        auto vertices = rect.Vertices();
-        double min_distance = std::numeric_limits<double>::max();
-
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            Line edge{vertices[i], vertices[(i + 1) % vertices.size()]};
-            min_distance = std::min(min_distance, (*this)(edge));
-        }
-
-        return min_distance;
-    }
-
-    double operator()(const RegularPolygon &polygon) const {
-        auto vertices = polygon.Vertices();
-        double min_distance = std::numeric_limits<double>::max();
-
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            Line edge{vertices[i], vertices[(i + 1) % vertices.size()]};
-            min_distance = std::min(min_distance, (*this)(edge));
-        }
-
-        return min_distance;
-    }
-
-    double operator()(const Circle &circle) const {
-        double center_distance = point.DistanceTo(circle.center_p);
-        return std::max(0.0, center_distance - circle.radius);
-    }
-
-    double operator()(const Polygon &polygon) const {
-        double min_distance = std::numeric_limits<double>::max();
-        for (const auto &p : polygon.Vertices()) {
-            min_distance = std::min(min_distance, point.DistanceTo(p));
-        }
-        return min_distance;
-    }
-};
-
-struct PointInShapeVisitor {
-    Point2D point;
-
-    explicit PointInShapeVisitor(const Point2D &p) : point(p) {}
-
-    bool operator()(const Line &line) const {
-        Point2D line_vec = line.end - line.start;
-        Point2D point_vec = point - line.start;
+    // Оператор, реализующий проверку принадлежности точки отрезку
+    [[nodiscard]] bool operator()(const Line &line) const {
+        // Условия принадлежности:
+        // 1. (point - start) X (end - start) = 0 (коллинеарность)
+        // 2. dot(point - start, end - start) принадлежит диапазону [0, |end-start|^2]
+        Point2D line_vec = line.Dir();              // направляющий вектор отрезка
+        Point2D point_vec = point_ - line.Start();  // вектор от начала отрезка к точке
 
         double cross = point_vec.Cross(line_vec);
-        if (std::abs(cross) > 1e-10) {
-            return false;
+        if (std::abs(cross) > EPS) {
+            return false;  // точка не лежит на прямой
         }
 
         double dot = point_vec.Dot(line_vec);
         double line_length_sq = line_vec.Dot(line_vec);
 
-        return dot >= 0 && dot <= line_length_sq;
+        return dot >= 0.0 && dot <= line_length_sq;
     }
 
-    bool operator()(const Triangle &triangle) const {
-        Point2D a = triangle.a;
-        Point2D b = triangle.b;
-        Point2D c = triangle.c;
+    // Оператор, реализующий проверку, находится ли точка внутри треугольника
+    [[nodiscard]] bool operator()(const Triangle &triangle) const {
+        // Используем метод проверки знаков: точка внутри, если она с одной стороны от всех сторон.
+        // Для каждой стороны (a,b) проверяем знак векторного произведения (b-a) x (point-a).
+        // Если все знаки одинаковы (или нули) - точка внутри.
+        Point2D a = triangle.A();
+        Point2D b = triangle.B();
+        Point2D c = triangle.C();
 
-        double sign1 = (point - a).Cross(b - a);
-        double sign2 = (point - b).Cross(c - b);
-        double sign3 = (point - c).Cross(a - c);
+        double sign1 = (point_ - a).Cross(b - a);
+        double sign2 = (point_ - b).Cross(c - b);
+        double sign3 = (point_ - c).Cross(a - c);
 
-        bool has_neg = (sign1 < 0) || (sign2 < 0) || (sign3 < 0);
-        bool has_pos = (sign1 > 0) || (sign2 > 0) || (sign3 > 0);
+        bool has_neg = (sign1 < 0.0) || (sign2 < 0.0) || (sign3 < 0.0);
+        bool has_pos = (sign1 > 0.0) || (sign2 > 0.0) || (sign3 > 0.0);
 
-        return !(has_neg && has_pos);
+        return !(has_neg && has_pos);  // если есть знаки и +, и -, то точка снаружи
     }
 
-    bool operator()(const Rectangle &rect) const {
-        return point.x >= rect.bottom_left.x && point.x <= rect.bottom_left.x + rect.width &&
-               point.y >= rect.bottom_left.y && point.y <= rect.bottom_left.y + rect.height;
+    // Оператор, реализующий проверку, находится ли точка внутри прямоугольника
+    [[nodiscard]] bool operator()(const Rectangle &rect) const {
+        // Проверка: x - в диапазоне [bottom_left.x, top_right.x], y - в диапазоне [bottom_left.y, top_right.y]
+        Point2D bl = rect.BottomLeft();
+        Point2D tr = rect.TopRight();
+        return point_.X() >= bl.X() && point_.X() <= tr.X() && point_.Y() >= bl.Y() && point_.Y() <= tr.Y();
     }
 
-    bool operator()(const RegularPolygon &polygon) const {
-        std::vector<Point2D> vertices = polygon.Vertices();
-        return point_in_polygon_ray_casting(point, vertices);
+    // Оператор, реализующий проверку, находится ли точка внутри правильного многоугольника
+    [[nodiscard]] bool operator()(const RegularPolygon &polygon) const {
+        // Используем метод "бросания лучей" (ray casting)
+        return point_in_polygon_ray_casting(point_, polygon.Vertices());
     }
 
-    bool operator()(const Circle &circle) const { return point.DistanceTo(circle.center_p) <= circle.radius; }
+    // Оператор, реализующий проверку, находится ли точка внутри окружности
+    [[nodiscard]] bool operator()(const Circle &circle) const {
+        // Используем квадраты расстояний, чтобы избежать дорогостоящего sqrt
+        // Точка внутри окружности, если (x - cx)^2 + (y - cy)^2 <= R^2
+        Point2D delta = point_ - circle.Center();
+
+        // Сравниваем квадраты расстояния и радиуса с учетом погрешности
+        return delta.Dot(delta) <= circle.Radius() * circle.Radius() + EPS;
+    }
+
+    // Оператор, реализующий проверку, находится ли точка внутри произвольного многоугольника
+    [[nodiscard]] bool operator()(const Polygon &polygon) const {
+        // Используем метод "бросания лучей" (ray casting)
+        return point_in_polygon_ray_casting(point_, polygon.Vertices());
+    }
 
 private:
-    bool point_in_polygon_ray_casting(const Point2D &p, const std::vector<Point2D> &vertices) const {
-        int intersections = 0;
-        size_t n = vertices.size();
+    // Метод проверки принадлежности точки многоугольнику (на основе "бросания лучей")
+    // (использует std::span для эффективной передачи вершин без копирования)
+    bool point_in_polygon_ray_casting(const Point2D &p, std::span<const Point2D> vertices) const {
+        // Алгоритм: пускаем луч вправо из точки и считаем количество пересечений с ребрами многоугольника.
+        // Если количество пересечений нечетное - точка внутри.
+        int intersections = 0;       // число пересечений луча с ребрами
+        size_t n = vertices.size();  // количество ребер (вершин) многоугольника
 
+        // Цикл по ребрам многоугольника
         for (size_t i = 0; i < n; ++i) {
-            Point2D v1 = vertices[i];
-            Point2D v2 = vertices[(i + 1) % n];
+            // Вершины ребра многоугольника
+            const Point2D &v1 = vertices[i];
+            const Point2D &v2 = vertices[(i + 1) % n];
 
-            if (((v1.y > p.y) != (v2.y > p.y)) && (p.x < (v2.x - v1.x) * (p.y - v1.y) / (v2.y - v1.y) + v1.x)) {
-                intersections++;
+            // Проверяем, лежит ли точка на ребре
+            if ((*this)(Line{v1, v2})) {  // используем оператор() для Line
+                return true;              // точка на границе считается внутри
+            }
+
+            // Пропускаем горизонтальные ребра (они не пересекают горизонтальный луч)
+            if (std::abs(v1.Y() - v2.Y()) < EPS) {
+                continue;
+            }
+
+            // Проверяем, пересекает ли горизонтальный луч ребро многоугольника
+            // Условие: y-координата точки строго между y1 и y2
+            if ((v1.Y() > p.Y() + EPS) != (v2.Y() > p.Y() + EPS)) {
+                // Вычисляем x-координату пересечения горизонтали с ребром
+                // Используем линейную интерполяцию: x = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+                double x_intersect = v1.X() + (p.Y() - v1.Y()) * (v2.X() - v1.X()) / (v2.Y() - v1.Y());
+
+                // Если пересечение правее точки, считаем его
+                if (x_intersect > p.X() + EPS) {  // добавляем EPS для корректной обработки точек на границе
+                    intersections++;
+                }
             }
         }
 
+        // Точка внутри (true), если количество пересечений нечетное
         return (intersections % 2) == 1;
     }
+
+    Point2D point_;  // точка, для которой выполняется проверка
 };
 
-struct ShapeToShapeDistanceVisitor {
-    std::optional<double> operator()(const Circle &c1, const Circle &c2) const {
-        double centerDistance = c1.center_p.DistanceTo(c2.center_p);
-        return std::max(0.0, centerDistance - c1.radius - c2.radius);
+// Класс-посетитель для вычисления расстояния между двумя фигурами
+// Поддерживает комбинации:
+// - Circle & Circle
+// - Line & Line
+// - Для всех остальных комбинаций возвращает std::nullopt
+class ShapeToShapeDistanceVisitor {
+public:
+    // Оператор, реализующий вычисление расстояния между двумя окружностями
+    [[nodiscard]] std::optional<double> operator()(const Circle &c1, const Circle &c2) const {
+        double centerDistance = c1.Center().DistanceTo(c2.Center());
+        return std::max(0.0, centerDistance - c1.Radius() - c2.Radius());
     }
 
-    std::optional<double> operator()(const Line &l1, const Line &l2) const {
-        std::vector<double> distances = {queries::DistanceVisitor{l1.start}(l2), queries::DistanceVisitor{l1.end}(l2),
-                                         queries::DistanceVisitor{l2.start}(l1), queries::DistanceVisitor{l2.end}(l1)};
+    // Оператор, реализующий вычисление расстояния между двумя отрезками
+    // (возвращает min расстояние между всеми парами точек)
+    [[nodiscard]] std::optional<double> operator()(const Line &l1, const Line &l2) const {
+        using PSDist = queries::PointToShapeDistanceVisitor;
+        std::vector<double> distances = {
+            PSDist{l1.Start()}(l2), PSDist{l1.End()}(l2),   // вычисляем расстояния от концов первого отрезка до второго
+            PSDist{l2.Start()}(l1), PSDist{l2.End()}(l1)};  // вычисляем расстояния от концов второго отрезка до первого
         return *std::ranges::min_element(distances);
     }
 
-    // fallback for all unsupported combinations
+    // Шаблонный оператор для всех неподдерживаемых комбинаций фигур
+    // Возвращает std::nullopt, так как расстояние не может быть вычислено
+    // (не выбрасывает исключение, т.к. отсутствие расстояния - это допустимая ситуация)
     template <typename T, typename U>
-    std::optional<double> operator()(const T &, const U &) const {
+    [[nodiscard]] std::optional<double> operator()(const T &, const U &) const {
         return std::nullopt;
     }
 };
 
+// === Функции-помощники ===
 
-/*
-* Функции-помощники
-*/
+// Вычисляет расстояние от точки до фигуры
 inline double DistanceToPoint(const Shape &shape, const Point2D &point) {
-
-    /* ваш код с PointToShapeDistanceVisitor здесь*/
-    return 0.0;
+    return std::visit(PointToShapeDistanceVisitor{point}, shape);
 }
 
+// Возвращает ограничивающий бокс (bounding box) фигуры
+// (каждая фигура имеет метод BoundBox(), возвращающий ограничивающий бокс)
 inline BoundingBox GetBoundBox(const Shape &shape) {
-
-    /* ваш код с использованием метода BoundBox() здесь */
-    return {};
+    // std::visit с мультилямбдой, вызывающей метод BoundBox() для каждой фигуры
+    return std::visit([](const auto &s) { return s.BoundBox(); }, shape);
 }
 
+// Возвращает высоту (max Y-координату) фигуры
 inline double GetHeight(const Shape &shape) {
-
-    /* ваш код с использованием метода Height() здесь */
-    return 0.0;
+    // std::visit с мультилямбдой, вызывающей метод MaxY() для каждой фигуры
+    return std::visit([](const auto &s) { return s.MaxY(); }, shape);
 }
 
+// Проверяет, пересекаются ли ограничивающие боксы двух фигур
+// (быстрая предварительная проверка перед точным вычислением пересечения)
 inline bool BoundingBoxesOverlap(const Shape &shape1, const Shape &shape2) {
-   BoundingBox bb1 = GetBoundBox(shape1);
+    BoundingBox bb1 = GetBoundBox(shape1);
     BoundingBox bb2 = GetBoundBox(shape2);
     return bb1.Overlaps(bb2);
 }
 
-std::optional<double> DistanceBetweenShapes(const Shape &shape1, const Shape &shape2) {
-
-    /* ваш код с ShapeToShapeDistanceVisitor здесь*/
-    return std::nullopt;
+// Вычисляет расстояние между двумя фигурами
+// (если расстояние не может быть вычислено, то возвращает std::nullopt)
+inline std::optional<double> DistanceBetweenShapes(const Shape &shape1, const Shape &shape2) {
+    return std::visit(ShapeToShapeDistanceVisitor{}, shape1, shape2);
 }
 
 }  // namespace geometry::queries

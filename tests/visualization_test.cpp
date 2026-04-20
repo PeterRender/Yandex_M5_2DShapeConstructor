@@ -1,4 +1,9 @@
-#include <gtest/gtest.h>
 #include "visualization.hpp"
+#include <gtest/gtest.h>
 
-TEST(VisualizationTest, SimpleCheck) { EXPECT_EQ(1 + 1, 2); }
+// Тесты визуализации - графические функции не тестируются в юнит-тестах
+// Для проверки отрисовки используется ручной просмотр графиков
+TEST(VisualizationTest, DrawShapes) {
+    // Функция отрисовки проверяется визуально при запуске приложения
+    SUCCEED();
+}
